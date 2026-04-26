@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>解約阻止ナビ</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', sans-serif; background: #fff; color: #222; display: flex; flex-direction: column; }
+
+/* Top */
+.top { border-bottom: 1px solid #e5e5e5; padding: 0 20px; display: flex; align-items: center; gap: 14px; height: 46px; flex-shrink: 0; }
+.top-title { font-size: 0.85rem; font-weight: 800; }
+.top-sep { width: 1px; height: 20px; background: #e5e5e5; }
+.mode-toggle { display: flex; border: 1px solid #e5e5e5; border-radius: 6px; overflow: hidden; }
+.mode-btn { padding: 4px 12px; font-size: 0.7rem; font-weight: 600; border: none; background: #fff; color: #888; cursor: pointer; font-family: inherit; }
+.mode-btn.active { background: #222; color: #fff; }
+.top-bc { font-size: 0.72rem; color: #999; }
+.top-bc b { color: #222; }
+.top-right { margin-left: auto; font-size: 0.6rem; color: #bbb; }
+
+/* Layout */
+.app { display: flex; flex: 1; overflow: hidden; }
+.sidebar { width: 180px; flex-shrink: 0; border-right: 1px solid #e5e5e5; overflow-y: auto; padding: 10px 6px; }
+.sb-label { font-size: 0.55rem; font-weight: 700; color: #bbb; letter-spacing: 0.08em; padding: 4px 8px; margin-top: 6px; }
+.sb-btn { display: block; width: 100%; padding: 7px 10px; background: none; border: none; border-radius: 5px; color: #666; font-size: 0.73rem; text-align: left; cursor: pointer; font-family: inherit; margin-bottom: 1px; }
+.sb-btn:hover { background: #f5f5f5; }
+.sb-btn.active { background: #222; color: #fff; font-weight: 700; }
+.sb-div { height: 1px; background: #eee; margin: 6px 4px; }
+.r-btn { display: block; width: 100%; padding: 6px 10px; background: none; border: none; border-radius: 5px; color: #ccc; font-size: 0.7rem; text-align: left; font-family: inherit; margin-bottom: 1px; }
+.r-btn.ok { color: #666; cursor: pointer; }
+.r-btn.ok:hover { background: #f5f5f5; }
+.r-btn.active { background: #222; color: #fff; font-weight: 700; }
+
+/* Content */
+.ct { flex: 1; overflow: auto; }
+.welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #bbb; text-align: center; gap: 6px; }
+.welcome h2 { font-size: 0.9rem; color: #888; font-weight: 600; }
+.welcome p { font-size: 0.72rem; }
+
+/* ===== TREE ===== */
+.tree { padding: 28px 32px; }
+.tree-heading { font-size: 0.95rem; font-weight: 800; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #222; }
+.tree-row { display: flex; align-items: flex-start; margin-bottom: 14px; }
+.tree-reason { flex-shrink: 0; width: 130px; padding: 8px 12px; border: 1.5px solid #ddd; border-radius: 6px; font-size: 0.72rem; font-weight: 700; cursor: pointer; }
+.tree-reason:hover { border-color: #222; }
+.tree-arrow { flex-shrink: 0; width: 24px; text-align: center; color: #ccc; font-size: 0.75rem; padding-top: 8px; }
+.tree-steps { display: flex; gap: 4px; align-items: flex-start; flex-wrap: wrap; }
+.tree-step { padding: 7px 10px; border: 1px solid #eee; border-radius: 5px; font-size: 0.65rem; cursor: pointer; line-height: 1.3; max-width: 180px; }
+.tree-step:hover { border-color: #222; background: #fafafa; }
+.tree-step-n { display: inline-block; width: 16px; height: 16px; border-radius: 50%; background: #222; color: #fff; text-align: center; line-height: 16px; font-size: 0.5rem; font-weight: 800; margin-right: 3px; vertical-align: middle; }
+.tree-step-a { color: #ccc; font-size: 0.6rem; display: flex; align-items: center; padding: 0 2px; }
+.tree-nodata { color: #ccc; font-size: 0.65rem; padding: 8px; }
+
+/* Popup */
+.popup { display: none; position: fixed; background: #fff; border: 1.5px solid #ddd; border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,0.1); padding: 16px 18px; max-width: 380px; z-index: 100; font-size: 0.76rem; line-height: 1.6; }
+.popup.open { display: block; }
+.popup-head { font-weight: 700; font-size: 0.8rem; margin-bottom: 6px; }
+.popup-close { position: absolute; top: 6px; right: 8px; width: 22px; height: 22px; border: none; background: #f5f5f5; border-radius: 5px; cursor: pointer; font-size: 0.85rem; color: #999; display: flex; align-items: center; justify-content: center; }
+.popup-close:hover { background: #eee; }
+.popup .hl { border-bottom: 2px solid #222; font-weight: 700; }
+.popup .ng { color: #c00; font-size: 0.7rem; margin-top: 5px; }
+.popup .ok { color: #555; font-size: 0.7rem; margin-top: 5px; }
+
+/* ===== STEP NAV ===== */
+.steps { padding: 16px 20px; display: flex; flex-direction: column; gap: 6px; }
+.card { border: 1.5px solid #eee; border-radius: 8px; cursor: pointer; overflow: hidden; }
+.card:hover { border-color: #ccc; }
+.card.active { border-color: #222; }
+.card.done { opacity: 0.35; }
+.card-head { padding: 9px 14px; display: flex; align-items: center; gap: 8px; }
+.card-n { width: 24px; height: 24px; border-radius: 50%; background: #222; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.62rem; font-weight: 800; flex-shrink: 0; }
+.card-ph { font-size: 0.58rem; font-weight: 700; color: #999; }
+.card-t { font-size: 0.82rem; font-weight: 700; flex: 1; }
+.card-chev { color: #ccc; font-size: 0.7rem; transition: transform 0.12s; }
+.card.active .card-chev { transform: rotate(90deg); }
+.card-body { display: none; padding: 14px 18px; border-top: 1px solid #eee; }
+.card.active .card-body { display: block; }
+.talk { font-size: 0.95rem; line-height: 1.85; margin-bottom: 8px; }
+.talk .hl { border-bottom: 2px solid #222; font-weight: 700; }
+.talk .key { font-weight: 700; }
+.tip { padding: 6px 10px; border-radius: 5px; font-size: 0.7rem; line-height: 1.5; margin-top: 4px; display: flex; gap: 5px; }
+.tip.ng { background: #fef2f2; color: #a00; }
+.tip.ok { background: #f9f9f9; color: #555; }
+.tip.info { background: #f9f9f9; color: #555; }
+.branch { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+.branch-b { padding: 5px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.68rem; color: #666; }
+
+/* Footer */
+.ft { border-top: 1px solid #e5e5e5; padding: 5px 20px; display: flex; align-items: center; justify-content: space-between; height: 38px; flex-shrink: 0; }
+.ft-nav { display: flex; gap: 5px; }
+.ft-btn { padding: 4px 12px; border: 1px solid #ddd; border-radius: 5px; background: #fff; font-size: 0.68rem; font-weight: 600; cursor: pointer; font-family: inherit; color: #444; }
+.ft-btn:hover { background: #222; color: #fff; border-color: #222; }
+.ft-btn:disabled { opacity: 0.2; cursor: default; }
+.ft-btn:disabled:hover { background: #fff; color: #444; border-color: #ddd; }
+.ft-st { font-size: 0.65rem; color: #bbb; }
+
+/* Admin modal */
+.admin-overlay { display:none; position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.3); z-index:200; justify-content:center; align-items:center; }
+.admin-overlay.open { display:flex; }
+.admin-panel { background:#fff; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,0.15); width:520px; max-width:92vw; max-height:85vh; overflow-y:auto; }
+.admin-head { padding:14px 18px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center; }
+.admin-head h2 { font-size:0.9rem; font-weight:700; }
+.admin-close { width:28px;height:28px;border:none;background:#f5f5f5;border-radius:6px;cursor:pointer;font-size:0.9rem;color:#999;display:flex;align-items:center;justify-content:center; }
+.admin-close:hover { background:#eee; }
+.admin-body { padding:16px 18px; }
+.admin-section { margin-bottom:16px; }
+.admin-section-title { font-size:0.68rem; font-weight:700; color:#bbb; letter-spacing:0.08em; margin-bottom:8px; }
+.admin-row { display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:6px; margin-bottom:2px; font-size:0.75rem; }
+.admin-row:hover { background:#fafafa; }
+.admin-row label { flex:1; cursor:pointer; display:flex; align-items:center; gap:8px; }
+.admin-row input[type=checkbox] { width:16px; height:16px; cursor:pointer; accent-color:#222; }
+.admin-row .cat { font-size:0.6rem; color:#bbb; background:#f5f5f5; padding:1px 6px; border-radius:4px; }
+.admin-row .cnt { font-size:0.6rem; color:#999; margin-left:auto; }
+.admin-save { display:block; width:100%; padding:10px; border:none; background:#222; color:#fff; border-radius:6px; font-size:0.78rem; font-weight:700; cursor:pointer; font-family:inherit; margin-top:12px; }
+.admin-save:hover { background:#444; }
+
+/* Settings button */
+.gear-btn { border:1px solid #ddd; background:#fff; font-size:0.65rem; font-weight:600; cursor:pointer; color:#888; padding:4px 10px; border-radius:5px; font-family:inherit; }
+.gear-btn:hover { background:#222; color:#fff; border-color:#222; }
+
+@media print {
+  .sidebar, .ft, .top, .admin-overlay { display: none !important; }
+  .app { display: block; }
+  .ct { overflow: visible; }
+  @page { size: A3 landscape; margin: 8mm; }
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="top-title">解約阻止ナビ</div>
+  <div class="top-sep"></div>
+  <div class="mode-toggle">
+    <button class="mode-btn active" data-m="tree">ツリー</button>
+    <button class="mode-btn" data-m="step">ステップ</button>
+  </div>
+  <div class="top-sep"></div>
+  <div class="top-bc" id="bc">商材を選択</div>
+  <div class="top-right">
+    <button class="gear-btn" id="gearBtn">管理</button>
+    <span>↑↓ 移動 &nbsp; Esc 戻る</span>
+  </div>
+</div>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sb-label">商材</div>
+    <div id="pl"></div>
+    <div class="sb-div"></div>
+    <div class="sb-label">解約理由</div>
+    <div id="rl"></div>
+  </div>
+  <div class="ct" id="ct"></div>
+</div>
+
+<!-- Admin Modal -->
+<div class="admin-overlay" id="adminOverlay">
+  <div class="admin-panel">
+    <div class="admin-head">
+      <h2>管理画面 — 表示商材の設定</h2>
+      <button class="admin-close" id="adminClose">&times;</button>
+    </div>
+    <div class="admin-body" id="adminBody"></div>
+  </div>
+</div>
+
+<div class="ft">
+  <div class="ft-nav">
+    <button class="ft-btn" id="bp" disabled>↑ 前へ</button>
+    <button class="ft-btn" id="bn" disabled>↓ 次へ</button>
+  </div>
+  <div class="ft-st" id="fs"></div>
+</div>
+
+<div class="popup" id="pop">
+  <button class="popup-close" id="pc">&times;</button>
+  <div class="popup-head" id="ph"></div>
+  <div id="pb"></div>
+</div>
+
+<script>
+// __DATA_START__
+const D={
+"乳酸菌&イチョウ葉の恵み":{name:"乳酸菌&イチョウ葉の恵み",reasons:{
+"ドクターストップ":{c:1,rate:0,steps:[{"ph": "即受理", "t": "共感 → 解約受理", "talk": "「<hl>お医者様のご指示</hl>でしたら、そちらを最優先にしてください。それでは<key>解約のお手続き</key>をいたします。」", "tips": [{"y": "ng", "x": "絶対NG:「お医者様に相談してみては」「サプリだから大丈夫」→ 法律違反の恐れ"}]}, {"ph": "終話", "t": "クロージング", "talk": "「ご利用ありがとうございました。<hl>お体お大事になさってください。</hl>」", "tips": []}]},
+"体に合わない":{c:2,rate:0,steps:[{"ph": "共感", "t": "共感・受容", "talk": "「<hl>それはお辛かったですね。</hl>お体のことですのでご心配ですよね。」", "tips": []}, {"ph": "ヒアリング", "t": "症状・併用薬の確認", "talk": "「具体的に<key>どのような症状</key>がございましたか？」\\n「現在<key>他のお薬</key>を飲まれていますか？」", "tips": [{"y": "ng", "x": "NG:「サプリだから大丈夫です」→ 医療判断に踏み込まない"}]}, {"ph": "提案", "t": "延期 or 量の調整", "talk": "「<hl>時期をずらして</hl>再度お試しいただくか、<hl>飲む量を減らして</hl>ご様子を見ていただくこともできます。」", "tips": [], "branch": ["延期で様子見", "量を減らして継続", "解約受理"]}, {"ph": "終話", "t": "クロージング", "talk": "【継続】「無理のないペースでお続けください。」\\n\\n【解約】「かしこまりました。<hl>お体お大事になさってください。</hl>」", "tips": []}]},
+"価格が高い":{c:1,rate:100,steps:[{"ph": "共感", "t": "共感", "talk": "「確かに<hl>長く続けるとご負担</hl>もございますよね。」", "tips": []}, {"ph": "提案", "t": "間隔変更 + 延期", "talk": "「お届け間隔を<hl>2〜3ヶ月に1回</hl>に変更も可能です。また<hl>最長半年間の延期</hl>も可能で、お値段は据え置きのまま再開できます。」", "tips": [{"y": "ng", "x": "値引き交渉には応じない（一律価格）"}], "branch": ["間隔変更で継続", "延期", "解約受理"]}, {"ph": "終話", "t": "クロージング", "talk": "【継続】「ご負担少なく続けていただけるかと思います。」\\n【解約】「ご利用ありがとうございました。」", "tips": []}]},
+"効果なし":{c:8,rate:62,steps:[{"ph": "共感", "t": "共感・受容", "talk": "「<hl>ご期待に沿えず大変申し訳ございません。</hl>せっかくお選びいただいたのに…」", "tips": [{"y": "ng", "x": "NG:「でも効果はありますよ」→ いきなりの反論は不信感を増す"}]}, {"ph": "ヒアリング", "t": "使用状況を確認", "talk": "「<key>何ヶ月ほど</key>ご利用いただいていますか？」\\n「<key>1日何粒、いつ頃</key>お飲みですか？」", "tips": [{"y": "info", "x": "飲み方が不適切→正しい案内だけで継続に繋がることも多い"}]}, {"ph": "切り返し", "t": "体質づくりの説明", "talk": "「同じように最初は実感しにくい方も、<hl>3ヶ月続けて変化を感じた</hl>という声もございます。\\n\\nお薬ではなく<key>体質づくりをサポートする</key>商品ですので、じっくり変えていくものです。」", "tips": [{"y": "ng", "x": "薬機法:「治ります」「効きます」NG →「サポートする成分」と言う"}]}, {"ph": "提案", "t": "間隔変更の提案", "talk": "「お届け間隔を<hl>2ヶ月に1回</hl>に変更して、ご負担を軽くすることもできますが、いかがでしょうか？」", "tips": [{"y": "info", "x": "提案順: ①間隔変更 → ②延期 → ③個数変更 → ④休止"}], "branch": ["間隔変更で継続", "延期で様子見", "解約受理"]}, {"ph": "終話", "t": "クロージング", "talk": "【継続】「間隔を変更いたします。次回のお届けをお待ちください。」\\n\\n【解約】「かしこまりました。<hl>ご利用ありがとうございました。</hl>」", "tips": [{"y": "ok", "x": "コンプライアンス: 明確な拒否には速やかに応じる"}]}]},
+"定期認識なし":{c:8,rate:75,steps:[{"ph": "共感", "t": "共感・受容", "talk": "「ご説明が不十分で<hl>大変申し訳ございません</hl>。定期コースだとご存知なくご不安にさせてしまいましたね。」", "tips": [{"y": "ok", "x": "まず謝罪。「騙された」と感じている可能性がある"}, {"y": "ng", "x": "NG:「LPに書いてあったんですが…」→ 責任転嫁に聞こえる"}]}, {"ph": "切り返し", "t": "縛りなし + 安心感", "talk": "「こちらは定期コースの初回特別価格でのご案内でして、ただ<hl>回数の縛りは一切ございません</hl>。いつでもご変更・キャンセルが可能です。」", "tips": [{"y": "ok", "x": "「縛りなし」を伝えるだけで安心→継続に繋がるケースが多い"}]}, {"ph": "切り返し", "t": "商品価値の説明", "talk": "「せっかくですので<hl>まず届いた分をお試し</hl>いただいてから、ご判断いただくのはいかがでしょうか？」", "tips": []}, {"ph": "提案", "t": "具体的な提案", "talk": "「次回のお届けを<hl>1袋だけ</hl>にして、それでお止めするという対応もできます。いかがでしょうか？」", "tips": [{"y": "ok", "x": "「全か無か」ではなく「ちょっとだけ」の選択肢を作る"}], "branch": ["もう少し続ける → 継続", "1袋だけ → 次回終了", "やっぱり解約 → 受理"]}, {"ph": "終話", "t": "クロージング", "talk": "【継続】「ありがとうございます。<hl>お届け日10日前</hl>までにご連絡で変更可能です。」\\n\\n【解約】「かしこまりました。<hl>ご利用ありがとうございました。</hl>」", "tips": []}]},
+}},
+"桑の葉＆茶カテキンの恵み":{name:"桑の葉＆茶カテキンの恵み",reasons:{
+"ドクターストップ":{c:2,rate:100,steps:[{"ph": "即受理", "t": "共感 → 解約受理", "talk": "「<hl>お医者様のご指示</hl>でしたら、そちらを最優先にしてください。それでは<key>解約のお手続き</key>をいたします。」", "tips": [{"y": "ng", "x": "絶対NG:「お医者様に相談してみては」「サプリだから大丈夫」→ 法律違反の恐れ"}]}, {"ph": "終話", "t": "クロージング", "talk": "「ご利用ありがとうございました。<hl>お体お大事になさってください。</hl>」", "tips": []}]},
+"効果なし":{c:2,rate:100,steps:[{"ph": "共感", "t": "共感・受容", "talk": "「<hl>ご期待に沿えず大変申し訳ございません。</hl>せっかくお選びいただいたのに…」", "tips": [{"y": "ng", "x": "NG:「でも効果はありますよ」→ いきなりの反論は不信感を増す"}]}, {"ph": "ヒアリング", "t": "使用状況を確認", "talk": "「<key>何ヶ月ほど</key>ご利用いただいていますか？」\\n「<key>1日何粒、いつ頃</key>お飲みですか？」", "tips": [{"y": "info", "x": "飲み方が不適切→正しい案内だけで継続に繋がることも多い"}]}, {"ph": "切り返し", "t": "体質づくりの説明", "talk": "「同じように最初は実感しにくい方も、<hl>3ヶ月続けて変化を感じた</hl>という声もございます。\\n\\nお薬ではなく<key>体質づくりをサポートする</key>商品ですので、じっくり変えていくものです。」", "tips": [{"y": "ng", "x": "薬機法:「治ります」「効きます」NG →「サポートする成分」と言う"}]}, {"ph": "提案", "t": "間隔変更の提案", "talk": "「お届け間隔を<hl>2ヶ月に1回</hl>に変更して、ご負担を軽くすることもできますが、いかがでしょうか？」", "tips": [{"y": "info", "x": "提案順: ①間隔変更 → ②延期 → ③個数変更 → ④休止"}], "branch": ["間隔変更で継続", "延期で様子見", "解約受理"]}, {"ph": "終話", "t": "クロージング", "talk": "【継続】「間隔を変更いたします。次回のお届けをお待ちください。」\\n\\n【解約】「かしこまりました。<hl>ご利用ありがとうございました。</hl>」", "tips": [{"y": "ok", "x": "コンプライアンス: 明確な拒否には速やかに応じる"}]}]},
+"家庭の事情":{c:1,rate:0,steps:[{"ph": "共感", "t": "共感・受容", "talk": "「<hl>ご事情がおありなんですね。</hl>ご無理はなさらないでください。」", "tips": []}, {"ph": "提案", "t": "延期 or 解約", "talk": "「<hl>一時休止</hl>して、落ち着かれてから再開することも可能です。いかがでしょうか？」", "tips": [], "branch": ["休止で様子見", "解約受理"]}, {"ph": "終話", "t": "クロージング", "talk": "【休止】「またいつでもご連絡ください。」\\n\\n【解約】「かしこまりました。<hl>ご利用ありがとうございました。</hl>」", "tips": []}]},
+}},
+"養蜂錠":{name:"養蜂錠",reasons:{
+"体に合わない":{c:1,rate:100,steps:[{"ph": "共感", "t": "共感・受容", "talk": "「<hl>それはお辛かったですね。</hl>お体のことですのでご心配ですよね。」", "tips": []}, {"ph": "ヒアリング", "t": "症状・併用薬の確認", "talk": "「具体的に<key>どのような症状</key>がございましたか？」\\n「現在<key>他のお薬</key>を飲まれていますか？」", "tips": [{"y": "ng", "x": "NG:「サプリだから大丈夫です」→ 医療判断に踏み込まない"}]}, {"ph": "提案", "t": "延期 or 量の調整", "talk": "「<hl>時期をずらして</hl>再度お試しいただくか、<hl>飲む量を減らして</hl>ご様子を見ていただくこともできます。」", "tips": [], "branch": ["延期で様子見", "量を減らして継続", "解約受理"]}, {"ph": "終話", "t": "クロージング", "talk": "【継続】「無理のないペースでお続けください。」\\n\\n【解約】「かしこまりました。<hl>お体お大事になさってください。</hl>」", "tips": []}]},
+"価格が高い":{c:1,rate:100,steps:[{"ph": "共感", "t": "共感", "talk": "「確かに<hl>長く続けるとご負担</hl>もございますよね。」", "tips": []}, {"ph": "提案", "t": "間隔変更 + 延期", "talk": "「お届け間隔を<hl>2〜3ヶ月に1回</hl>に変更も可能です。また<hl>最長半年間の延期</hl>も可能で、お値段は据え置きのまま再開できます。」", "tips": [{"y": "ng", "x": "値引き交渉には応じない（一律価格）"}], "branch": ["間隔変更で継続", "延期", "解約受理"]}, {"ph": "終話", "t": "クロージング", "talk": "【継続】「ご負担少なく続けていただけるかと思います。」\\n【解約】「ご利用ありがとうございました。」", "tips": []}]},
+}},
+};
+// __DATA_END__
+
+// ドライブに存在する全商材（データなしも含む）
+const ALL_PRODUCTS = {
+  // 機能性
+  "乳酸菌&イチョウ葉の恵み": { cat: "機能性" },
+  "バナバ＆サラシアの恵み": { cat: "機能性" },
+  "桑の葉＆茶カテキンの恵み": { cat: "機能性" },
+  "ヒハツ＆ギャバの恵み": { cat: "機能性" },
+  "菊の花＆カテキンの恵み": { cat: "機能性" },
+  "ルテイン＆ギャバの恵み": { cat: "機能性" },
+  "オリーブ＆ギャバの恵み": { cat: "機能性" },
+  "スルフォラファン&ギャバの恵み": { cat: "機能性" },
+  // 漢方
+  "威徳-漢方の恵み-": { cat: "漢方" },
+  "真澄-漢方の恵み-": { cat: "漢方" },
+  "澄明錠-漢方の恵み-": { cat: "漢方" },
+  "抑痛錠-漢方の恵み-": { cat: "漢方" },
+  "六味丸-漢方の恵み-": { cat: "漢方" },
+  "潤勝散-漢方の恵み-": { cat: "漢方" },
+  "養蜂錠": { cat: "漢方" },
+};
+
+// Dに存在しない商材は空データで補完
+for (const [key, info] of Object.entries(ALL_PRODUCTS)) {
+  if (!D[key]) {
+    D[key] = { name: key, reasons: {} };
+  }
+}
+
+// 表示設定（localStorageで永続化）
+const STORAGE_KEY = 'kaiyaku_navi_visible';
+function loadVisible() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) return JSON.parse(saved);
+  // デフォルト: データがある商材のみ表示
+  const v = {};
+  for (const key of Object.keys(ALL_PRODUCTS)) {
+    const hasData = D[key] && Object.values(D[key].reasons).some(r => r.steps && r.steps.length > 0);
+    v[key] = hasData;
+  }
+  return v;
+}
+function saveVisible(v) { localStorage.setItem(STORAGE_KEY, JSON.stringify(v)); }
+let visible = loadVisible();
+
+let mode='tree',curP=null,curR=null,curS=-1,steps=[];
+const ct=document.getElementById('ct'),rl=document.getElementById('rl'),pl=document.getElementById('pl'),bc=document.getElementById('bc'),bp=document.getElementById('bp'),bn=document.getElementById('bn'),fs=document.getElementById('fs'),pop=document.getElementById('pop');
+
+// サイドバー商材リスト動的生成
+function buildProductList() {
+  let h = '';
+  for (const [key, info] of Object.entries(ALL_PRODUCTS)) {
+    if (!visible[key]) continue;
+    const hasData = D[key] && Object.values(D[key].reasons).some(r => r.steps && r.steps.length > 0);
+    h += `<button class="sb-btn${curP===key?' active':''}" data-p="${key}" style="${hasData?'':'color:#ccc'}">${D[key]?.name || key}</button>`;
+  }
+  pl.innerHTML = h;
+  pl.querySelectorAll('.sb-btn[data-p]').forEach(b => {
+    b.addEventListener('click', () => {
+      pl.querySelectorAll('.sb-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      curP = b.dataset.p; curR = null; curS = -1;
+      showR(); render(); updBC();
+    });
+  });
+}
+
+document.querySelectorAll('.mode-btn').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('.mode-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');mode=b.dataset.m;render();});});
+
+// 管理画面
+const adminOverlay = document.getElementById('adminOverlay');
+const adminBody = document.getElementById('adminBody');
+document.getElementById('gearBtn').addEventListener('click', openAdmin);
+document.getElementById('adminClose').addEventListener('click', () => adminOverlay.classList.remove('open'));
+adminOverlay.addEventListener('click', e => { if (e.target === adminOverlay) adminOverlay.classList.remove('open'); });
+
+function openAdmin() {
+  let h = '';
+  const cats = {};
+  for (const [key, info] of Object.entries(ALL_PRODUCTS)) {
+    if (!cats[info.cat]) cats[info.cat] = [];
+    cats[info.cat].push(key);
+  }
+  for (const [cat, keys] of Object.entries(cats)) {
+    h += `<div class="admin-section"><div class="admin-section-title">${cat}</div>`;
+    for (const key of keys) {
+      const info = ALL_PRODUCTS[key];
+      const hasData = D[key] && Object.values(D[key].reasons).some(r => r.steps && r.steps.length > 0);
+      const reasonCount = D[key] ? Object.keys(D[key].reasons).length : 0;
+      h += `<div class="admin-row">
+        <label><input type="checkbox" data-k="${key}" ${visible[key]?'checked':''}> ${D[key]?.name || key}</label>
+        <span class="cnt">${hasData ? reasonCount+'理由' : 'データなし'}</span>
+      </div>`;
+    }
+    h += '</div>';
+  }
+  h += '<button class="admin-save" id="adminSave">保存して閉じる</button>';
+  adminBody.innerHTML = h;
+  document.getElementById('adminSave').addEventListener('click', () => {
+    const newV = {};
+    adminBody.querySelectorAll('input[data-k]').forEach(cb => { newV[cb.dataset.k] = cb.checked; });
+    visible = newV;
+    saveVisible(visible);
+    buildProductList();
+    adminOverlay.classList.remove('open');
+    // 非表示にした商材が選択中だったらリセット
+    if (curP && !visible[curP]) { curP = null; curR = null; curS = -1; render(); updBC(); }
+  });
+  adminOverlay.classList.add('open');
+}
+
+function showR(){
+  if(!curP||!D[curP]){rl.innerHTML='';return;}
+  let h='';
+  for(const[r,d]of Object.entries(D[curP].reasons)){
+    const ok=d.steps&&d.steps.length>0;
+    const rateStr = d.rate !== undefined ? ` ${d.rate}%` : '';
+    const cStr = d.c ? `${d.c}件` : '';
+    h+=`<button class="r-btn ${ok?'ok':''}" data-r="${r}">${r}${cStr?`<span class="reason-badge">${cStr}${rateStr}</span>`:''}</button>`;
+  }
+  rl.innerHTML=h;
+  rl.querySelectorAll('.r-btn.ok').forEach(b=>{b.addEventListener('click',()=>{rl.querySelectorAll('.r-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');curR=b.dataset.r;curS=0;steps=D[curP].reasons[curR].steps;render();updBC();});});
+}
+function updBC(){
+  let s='';
+  if(curP) s+=D[curP]?.name||curP;
+  if(curR) s+=' › <b>'+curR+'</b>';
+  bc.innerHTML=s||'商材を選択';
+}
+
+function render(){
+  closePop();
+  if(!curP){ct.innerHTML='<div class="welcome"><h2>商材を選択してください</h2></div>';bp.disabled=bn.disabled=true;fs.textContent='';return;}
+  if(mode==='tree') rTree(); else rStep();
+}
+
+function fmt(t){return t.replace(/<hl>/g,'<span class="hl">').replace(/<\/hl>/g,'</span>').replace(/<key>/g,'<span class="key">').replace(/<\/key>/g,'</span>').replace(/\n/g,'<br>');}
+
+function rTree(){
+  bp.disabled=bn.disabled=true;fs.textContent='';
+  const p=D[curP];let h='<div class="tree">';
+  h+=`<div class="tree-heading">${p.name}</div>`;
+  for(const[r,rd]of Object.entries(p.reasons)){
+    h+='<div class="tree-row">';
+    const rInfo = rd.c ? ` (${rd.c}件${rd.rate!==undefined?' / '+rd.rate+'%':''})` : '';
+    h+=`<div class="tree-reason" data-r="${r}">${r}${rInfo}</div><div class="tree-arrow">→</div>`;
+    if(rd.steps&&rd.steps.length){
+      h+='<div class="tree-steps">';
+      rd.steps.forEach((s,i)=>{
+        if(i>0) h+='<div class="tree-step-a">→</div>';
+        h+=`<div class="tree-step" data-r="${r}" data-i="${i}"><span class="tree-step-n">${i+1}</span>${s.ph} ${s.t}</div>`;
+      });
+      h+='</div>';
+    } else h+='<div class="tree-nodata">データ未収集</div>';
+    h+='</div>';
+  }
+  h+='</div>';ct.innerHTML=h;
+
+  ct.querySelectorAll('.tree-reason[data-r]').forEach(el=>{el.addEventListener('click',()=>{
+    const r=el.dataset.r,rd=D[curP].reasons[r];if(!rd||!rd.steps.length)return;
+    curR=r;curS=0;steps=rd.steps;rl.querySelectorAll('.r-btn').forEach(b=>b.classList.toggle('active',b.dataset.r===r));
+    mode='step';document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.m==='step'));render();updBC();
+  });});
+  ct.querySelectorAll('.tree-step[data-r]').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();const r=el.dataset.r,i=+el.dataset.i,s=D[curP].reasons[r].steps[i];if(s)showPop(s,el);});});
+}
+
+function showPop(s,el){
+  const r=el.getBoundingClientRect();
+  document.getElementById('ph').textContent=s.ph+' — '+s.t;
+  let b='<div>'+fmt(s.talk)+'</div>';
+  if(s.tips)s.tips.forEach(t=>{b+=`<div class="${t.y}">${t.y==='ng'?'⚠':'→'} ${t.x}</div>`;});
+  document.getElementById('pb').innerHTML=b;
+  pop.classList.add('open');
+  let top=r.bottom+8,left=r.left;
+  if(top+200>innerHeight)top=r.top-220;
+  if(left+380>innerWidth)left=innerWidth-400;
+  pop.style.top=Math.max(4,top)+'px';pop.style.left=Math.max(4,left)+'px';
+}
+function closePop(){pop.classList.remove('open');}
+document.getElementById('pc').addEventListener('click',closePop);
+document.addEventListener('click',e=>{if(!pop.contains(e.target)&&!e.target.closest('.tree-step'))closePop();});
+
+function rStep(){
+  if(!curR||!steps.length){ct.innerHTML='<div class="welcome"><h2>解約理由を選択</h2></div>';bp.disabled=bn.disabled=true;fs.textContent='';return;}
+  let h='<div class="steps">';
+  steps.forEach((s,i)=>{
+    const a=i===curS,d=i<curS;
+    h+=`<div class="card ${a?'active':''} ${d?'done':''}" data-i="${i}">
+      <div class="card-head">
+        <div class="card-n">${i+1}</div>
+        <div class="card-ph">${s.ph}</div>
+        <div class="card-t">${s.t}</div>
+        <span class="card-chev">&#9654;</span>
+      </div>
+      <div class="card-body">
+        <div class="talk">${fmt(s.talk)}</div>
+        ${s.tips&&s.tips.length?s.tips.map(t=>`<div class="tip ${t.y}">${t.y==='ng'?'⚠ ':'→ '}${t.x}</div>`).join(''):''}
+        ${s.branch?'<div class="branch">'+s.branch.map(b=>`<div class="branch-b">${b}</div>`).join('')+'</div>':''}
+      </div>
+    </div>`;
+  });
+  h+='</div>';ct.innerHTML=h;
+  ct.querySelectorAll('.card').forEach(c=>{c.addEventListener('click',()=>{curS=+c.dataset.i;rStep();});});
+  setTimeout(()=>{const a=ct.querySelector('.card.active');if(a)a.scrollIntoView({behavior:'smooth',block:'center'});},50);
+  bp.disabled=curS<=0;bn.disabled=curS>=steps.length-1;fs.textContent=`${curS+1} / ${steps.length}`;
+}
+
+bp.addEventListener('click',()=>{if(curS>0){curS--;rStep();}});
+bn.addEventListener('click',()=>{if(curS<steps.length-1){curS++;rStep();}});
+document.addEventListener('keydown',e=>{
+  if(mode==='step'&&steps.length){
+    if(e.key==='ArrowDown'||e.key==='ArrowRight'){e.preventDefault();if(curS<steps.length-1){curS++;rStep();}}
+    else if(e.key==='ArrowUp'||e.key==='ArrowLeft'){e.preventDefault();if(curS>0){curS--;rStep();}}
+  }
+  if(e.key==='Escape'){if(pop.classList.contains('open')){closePop();return;}if(mode==='step'&&curR){mode='tree';document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.m==='tree'));render();}}
+});
+buildProductList();
+render();
+</script>
+</body>
+</html>
